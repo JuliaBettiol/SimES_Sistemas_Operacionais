@@ -158,17 +158,93 @@ class SistemaArquivos:
 
     # ============================================================ TODO — núcleo (N3)
     def resolver(self, caminho, seguir_simbolico=True):
-        """Devolve o FCB do caminho absoluto, lendo os diretórios do caminho (ver regras).
-        Erros: ENOENT, ENOTDIR. Com o M4: segue links simbólicos (inclusive no meio do
-        caminho; o último componente só se seguir_simbolico=True); ELOOP depois de
-        MAX_LINKS_SIMBOLICOS links."""
-        raise NotImplementedError("TODO (núcleo N3): resolver")
+        """Localiza o FCB correspondente ao caminho absoluto."""
+        componentes = self._dividir(caminho)
+        atual = self.raiz
 
+        for nome in componentes:
+            if atual.tipo != "diretorio":
+                raise ErroSA("ENOTDIR", nome)
+
+            self._ler_diretorio(atual)
+
+            if nome not in atual.entradas:
+                raise ErroSA("ENOENT", caminho)
+
+            atual = self.fcbs[atual.entradas[nome]]
+
+        return atual
+    
     def mkdir(self, processo, caminho):
-        raise NotImplementedError("TODO (núcleo N3): mkdir")
+        componentes = self._dividir(caminho)
+
+        if not componentes:
+            raise ErroSA("EEXIST", caminho)
+
+        nome = componentes[-1]
+        caminho_pai = "/" + "/".join(componentes[:-1])
+        pai = self.resolver(caminho_pai)
+
+        if pai.tipo != "diretorio":
+            raise ErroSA("ENOTDIR", caminho_pai)
+
+        self._ler_diretorio(pai)
+
+        if nome in pai.entradas:
+            raise ErroSA("EEXIST", caminho)
+
+        novo = self._novo_fcb(
+            nome, "diretorio", pai.id, processo
+        )
+
+        try:
+            self._aplicar(self.alocador.alocar(novo, 1))
+        except ErroSA:
+            del self.fcbs[novo.id]
+            raise
+
+        pai.entradas[nome] = novo.id
+
+        self._gravar_diretorio(novo)
+        self._gravar_diretorio(pai)
 
     def create(self, processo, caminho, tamanho):
-        raise NotImplementedError("TODO (núcleo N3): create")
+        if tamanho < 0:
+            raise ErroSA("EINVAL", "tamanho negativo")
+
+        componentes = self._dividir(caminho)
+
+        if not componentes:
+            raise ErroSA("EEXIST", caminho)
+
+        nome = componentes[-1]
+        caminho_pai = "/" + "/".join(componentes[:-1])
+        pai = self.resolver(caminho_pai)
+
+        if pai.tipo != "diretorio":
+            raise ErroSA("ENOTDIR", caminho_pai)
+
+        self._ler_diretorio(pai)
+
+        if nome in pai.entradas:
+            raise ErroSA("EEXIST", caminho)
+
+        novo = self._novo_fcb(
+            nome, "arquivo", pai.id, processo
+        )
+
+        novo.tamanho = tamanho
+        n_blocos = self._blocos_necessarios(tamanho)
+
+        try:
+            self._aplicar(self.alocador.alocar(novo, n_blocos))
+        except ErroSA:
+            del self.fcbs[novo.id]
+            raise
+
+        pai.entradas[nome] = novo.id
+
+        self._gravar_diretorio(pai)
 
     def open(self, processo, caminho, modo, handle):
         raise NotImplementedError("TODO (núcleo N3): open")
