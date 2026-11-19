@@ -1,8 +1,13 @@
 {
   "integrantes": [
-    {"nome": "Nome Completo do Integrante 1"}
+      {
+          "nome": "Júlia Bettiol de Oliveira"
+      },
+      {
+          "nome": "Thomaz Szeckir"
+      }
   ],
-  "repositorio": "https://github.com/usuario/nome-do-repositorio",
+  "repositorio": "https://github.com/JuliaBettiol/SimES_Sistemas_Operacionais",
   "modulos": [],
   "integracao": false,
   "bonus_flash": false,
