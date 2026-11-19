@@ -54,8 +54,21 @@ class SSTF(Escalonador):
     nome = "SSTF"
 
     def escolher(self, fila, cabeca, direcao, agora, max_cilindro):
-        raise NotImplementedError("TODO (núcleo N2): implementar o SSTF")
+        # Seleciona a requisição mais próxima da cabeça do disco.
+        menor_indice = min(
+            range(len(fila)),
+            key=lambda i: abs(fila[i].cilindro - cabeca)
+        )
 
+        alvo = fila[menor_indice].cilindro
+
+        # Atualiza a direção de acordo com o movimento realizado.
+        if alvo > cabeca:
+            direcao = +1
+        elif alvo < cabeca:
+            direcao = -1
+
+        return menor_indice, direcao, []
 
 class SCAN(Escalonador):
     """
