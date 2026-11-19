@@ -313,7 +313,58 @@ class SistemaArquivos:
         return fim - inicio
 
     def write(self, processo, handle, n):
-        raise NotImplementedError("TODO (núcleo N3): write")
+        # Obtém a entrada do arquivo aberto pelo processo.
+        entrada = self._entrada(processo, handle)
+
+        if n < 0:
+            raise ErroSA("EINVAL", "quantidade negativa")
+
+        # Verifica se o arquivo foi aberto para escrita.
+        if entrada.modo not in ("w", "rw", "a"):
+            raise ErroSA("EBADF", "arquivo não aberto para escrita")
+
+        fcb = self.fcbs[entrada.fcb_id]
+
+        # Verifica possíveis travas do módulo M5.
+        self._verificar_trava(processo, fcb)
+
+        if n == 0:
+            return 0
+
+        # No modo de acréscimo, toda escrita começa no fim do arquivo.
+        if entrada.modo == "a":
+            entrada.posicao = fcb.tamanho
+
+        inicio = entrada.posicao
+        fim = inicio + n
+
+        # Aumenta a quantidade de blocos quando necessário.
+        if fim > fcb.tamanho:
+            blocos_necessarios = self._blocos_necessarios(fim)
+            blocos_atuais = len(fcb.blocos)
+
+            blocos_adicionais = blocos_necessarios - blocos_atuais
+
+            if blocos_adicionais > 0:
+                self._aplicar(
+                    self.alocador.estender(fcb, blocos_adicionais)
+                )
+
+        # Grava os blocos físicos correspondentes ao intervalo.
+        blocos = self._blocos_do_intervalo(fcb, inicio, fim)
+        self._escrever(blocos)
+
+        # Atualiza a posição da abertura.
+        entrada.posicao = fim
+
+        # Atualiza os metadados do arquivo.
+        if fim > fcb.tamanho:
+            fcb.tamanho = fim
+
+        fcb.modificado_ms = self.agora_ms
+        fcb.sujo = True
+
+        return n
 
     def seek(self, processo, handle, posicao):
         # Não permite posições negativas.
@@ -356,7 +407,43 @@ class SistemaArquivos:
                 self._liberar_arquivo(fcb)
 
     def unlink(self, processo, caminho):
-        raise NotImplementedError("TODO (núcleo N3): unlink")
+        componentes = self._dividir(caminho)
+
+        if not componentes:
+            raise ErroSA("EISDIR", caminho)
+
+        nome = componentes[-1]
+        caminho_pai = "/" + "/".join(componentes[:-1])
+
+        # Localiza o diretório pai e contabiliza as leituras do caminho.
+        pai = self.resolver(caminho_pai)
+
+        if pai.tipo != "diretorio":
+            raise ErroSA("ENOTDIR", caminho_pai)
+
+        self._ler_diretorio(pai)
+
+        if nome not in pai.entradas:
+            raise ErroSA("ENOENT", caminho)
+
+        fcb = self.fcbs[pai.entradas[nome]]
+
+        # O unlink do núcleo remove arquivos, não diretórios.
+        if fcb.tipo == "diretorio":
+            raise ErroSA("EISDIR", caminho)
+
+        # Remove a entrada do diretório.
+        del pai.entradas[nome]
+
+        # Atualiza a quantidade de links do arquivo.
+        fcb.links -= 1
+
+        # A remoção exige uma escrita no diretório pai.
+        self._gravar_diretorio(pai)
+
+        # Libera os blocos somente se não houver links nem aberturas.
+        if fcb.links == 0 and fcb.id not in self.tabela_global:
+            self._liberar_arquivo(fcb)
 
     # ======================================================== TODO — módulo M4
     def link(self, processo, existente, novo):
