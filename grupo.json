@@ -8,7 +8,7 @@
       }
   ],
   "repositorio": "https://github.com/JuliaBettiol/SimES_Sistemas_Operacionais",
-  "modulos": [],
+  "modulos": ["M1"],
   "integracao": false,
   "bonus_flash": false,
   "observacoes": ""
