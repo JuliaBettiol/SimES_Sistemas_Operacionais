@@ -1,8 +1,8 @@
 # Relatório — SimES: simulador de E/S e de sistema de arquivos
 
-**Integrantes:** [nome completo de TODOS os integrantes, separados por vírgula]
+**Integrantes:** Júlia Bettiol de Oliveira; Thomaz Szeckir
 
-**Repositório:** [https://github.com/usuario/repositorio — o repositório público do grupo]
+**Repositório:** https://github.com/JuliaBettiol/SimES_Sistemas_Operacionais
 
 <!--
 INSTRUÇÕES DO MODELO (apaguem este bloco antes de entregar)
@@ -67,11 +67,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X1 — Escalonadores sob quatro padrões de carga
 
-**Hipótese:** [escrita ANTES de rodar o experimento]
+**Hipótese:** Espera-se que os algoritmos SSTF e SCAN apresentem menor deslocamento total da cabeça de leitura e menor tempo médio de resposta do que o FCFS, principalmente em cargas aleatórias e concentradas. Em cargas sequenciais, a diferença entre os algoritmos deverá ser menor.
 
-**Fundamentação:** [por que esperavam isso; citem as seções do Silberschatz]
+**Fundamentação:** O FCFS atende às requisições na ordem de chegada, sem considerar sua localização física no disco. O SSTF prioriza a requisição mais próxima da posição atual da cabeça, enquanto o SCAN organiza o atendimento conforme a direção de movimentação do braço. Como o tempo de busca depende da distância percorrida entre cilindros, a redução dos deslocamentos tende a diminuir o tempo total de atendimento. Entretanto, o SSTF pode provocar esperas prolongadas para determinadas requisições.
 
-**Configuração:** [o que o experimento varia e o que mede]
+**Configuração:** Comparação dos escalonadores FCFS, SSTF e SCAN em um disco HDD, utilizando interrupções e quatro padrões de carga: sequencial, aleatória, concentrada e rajadas. Serão realizadas 12 simulações, considerando os indicadores de deslocamento total, tempo de resposta, espera máxima e vazão.
 
 **Resultados:** [tabela com os números principais e referência aos gráficos]
 
@@ -83,11 +83,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X2 — Polling × interrupção conforme o dispositivo
 
-**Hipótese:** [ ]
+**Hipótese:** Espera-se que o mecanismo de interrupções apresente menor utilização da CPU com operações de entrada e saída do que o polling, especialmente no disco HDD. No dispositivo rápido, a diferença deverá diminuir devido ao menor tempo de atendimento das requisições.
 
-**Fundamentação:** [ ]
+**Fundamentação:** No polling, a CPU verifica repetidamente se o dispositivo concluiu a operação, consumindo processamento durante a espera. Com interrupções, a CPU pode executar outras atividades e somente precisa tratar a conclusão quando o dispositivo sinaliza o término. O modelo considera um custo de 0,015 ms para o tratamento de cada interrupção, enquanto o dispositivo rápido elimina os custos de busca e latência rotacional.
 
-**Configuração:** [ ]
+**Configuração:** Comparação entre polling e interrupções, utilizando o escalonador FCFS, dois dispositivos (HDD e rápido) e duas cargas (aleatória e sequencial). Serão realizadas oito simulações, com foco no percentual de CPU dedicado à entrada e saída e nos tempos de atendimento.
 
 **Resultados:** [ ]
 
@@ -99,11 +99,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X3 — Acesso sequencial × direto
 
-**Hipótese:** [ ]
+**Hipótese:** Espera-se que a carga de acesso sequencial, representada pelo compilador, apresente menor custo médio por operação de leitura do que a carga de acesso direto, representada pelo banco de dados.
 
-**Fundamentação:** [ ]
+**Fundamentação:** O acesso sequencial tende a aproveitar a continuidade dos blocos e a posição corrente do arquivo, reduzindo a necessidade de reposicionamentos. O acesso direto utiliza operações de posicionamento para alcançar regiões específicas, podendo aumentar a quantidade de blocos distintos acessados. Entretanto, como o simulador também contabiliza a resolução de caminhos e as atualizações de diretórios, o custo total dependerá da combinação de operações presente em cada carga.
 
-**Configuração:** [ ]
+**Configuração:** Execução das cargas de sistema de arquivos denominadas compilador e banco_dados, utilizando alocação contígua e bloqueio consultivo. Serão comparados o número de operações, os acessos ao disco, o tempo médio por operação e os custos por tipo de operação.
 
 **Resultados:** [ ]
 
@@ -115,11 +115,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X4 — Custo de resolver caminhos conforme a profundidade
 
-**Hipótese:** [ ]
+**Hipótese:** Espera-se que o custo de resolução de caminhos aumente conforme a profundidade da estrutura de diretórios, aproximadamente de forma linear em relação ao número de diretórios percorridos.
 
-**Fundamentação:** [ ]
+**Fundamentação:** Para localizar um arquivo, o sistema precisa percorrer os componentes do caminho e consultar os diretórios intermediários. Na implementação do núcleo, a resolução de caminhos contabiliza leituras dos diretórios visitados. Assim, caminhos mais profundos tendem a exigir mais acessos e maior tempo de processamento.
 
-**Configuração:** [ ]
+**Configuração:** Execução de dez cargas geradas pela função fs_profundidade, com profundidades de 1 a 10 diretórios. Todas utilizarão alocação contígua e bloqueio consultivo. Serão observados os acessos médios por operação e o tempo médio de execução.
 
 **Resultados:** [ ]
 
@@ -131,11 +131,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X5 — Tabelas de arquivos abertos com vários processos
 
-**Hipótese:** [ ]
+**Hipótese:** Espera-se que a execução da carga de servidor web demonstre o compartilhamento de entradas na tabela global de arquivos abertos, permitindo que diferentes processos mantenham descritores próprios associados a um mesmo arquivo. Assim, o número de entradas nas tabelas por processo poderá superar o número de entradas distintas na tabela global.
 
-**Fundamentação:** [ ]
+**Fundamentação:** O sistema de arquivos utiliza uma tabela global para representar arquivos abertos e tabelas individuais para armazenar os descritores de cada processo. Quando vários processos abrem o mesmo arquivo, suas entradas individuais podem referenciar uma única entrada global, cujo contador registra as aberturas existentes. Essa organização permite compartilhar informações sobre o arquivo sem exigir uma estrutura global independente para cada abertura.
 
-**Configuração:** [ ]
+**Configuração:** Execução da carga servidor_web, com alocação contígua e bloqueio consultivo. Serão observados os valores máximos da tabela global, das tabelas por processo, da soma dessas tabelas e do contador de aberturas.
 
 **Resultados:** [ ]
 
@@ -147,11 +147,11 @@ Resultado dos testes automáticos (`python3 executar.py testes`): [cole a últim
 
 ### X6 — Cache de blocos (M1)
 
-**Hipótese:** [ ]
+**Hipótese:** Espera-se que a utilização de cache reduza o tempo de atendimento das requisições em comparação com a execução sem cache, principalmente quando houver reutilização de blocos. A política LRU deverá apresentar desempenho igual ou superior ao FIFO em cargas com localidade temporal. Capacidades maiores deverão favorecer a taxa de acertos, embora os ganhos possam diminuir após determinado tamanho. A estratégia write-back deverá reduzir o número de escritas físicas em determinadas situações, mas poderá provocar perda de dados ainda não sincronizados durante uma queda de energia.
 
-**Fundamentação:** [ ]
+**Fundamentação:** A cache mantém blocos recentemente utilizados na memória, permitindo atender determinados acessos sem consultar o disco. A política LRU remove o bloco menos recentemente utilizado, enquanto a FIFO remove o bloco armazenado há mais tempo. No write-through, as escritas são encaminhadas imediatamente ao dispositivo. No write-back, os blocos modificados permanecem temporariamente na memória e são gravados posteriormente. O simulador considera um custo de 0,001 ms por acerto na cache e um intervalo de sincronização de 5.000 ms.
 
-**Configuração:** [ ]
+**Configuração:** Utilização da carga reuso, com escalonador FCFS, HDD e interrupções. Serão comparadas as políticas LRU e FIFO, capacidades de 64, 128, 256, 512, 1.024 e 2.048 blocos e estratégias write-through e write-back. O experimento também inclui uma execução sem cache e uma queda de energia no instante correspondente à chegada da requisição central da carga, totalizando 25 simulações. Serão analisados a taxa de acertos, o tempo de atendimento, as escritas físicas e os blocos perdidos na queda.
 
 **Resultados:** [ ]
 
