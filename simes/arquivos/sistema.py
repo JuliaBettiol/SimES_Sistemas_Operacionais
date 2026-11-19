@@ -326,7 +326,34 @@ class SistemaArquivos:
         entrada.posicao = posicao
 
     def close(self, processo, handle):
-        raise NotImplementedError("TODO (núcleo N3): close")
+        # Localiza a abertura do arquivo.
+        entrada = self._entrada(processo, handle)
+        fcb = self.fcbs[entrada.fcb_id]
+        global_ = self.tabela_global[entrada.fcb_id]
+
+        # Se os metadados foram alterados, grava o diretório pai.
+        if fcb.sujo:
+            pai = self.fcbs[fcb.pai]
+            self._gravar_diretorio(pai)
+            fcb.sujo = False
+
+        # Libera a trava caso pertença ao processo que está fechando.
+        if global_.trava == processo:
+            global_.trava = None
+
+        # Remove o handle da tabela do processo.
+        del self.tabelas_processo[processo][handle]
+
+        # Atualiza o contador global de aberturas.
+        global_.contador -= 1
+
+        # Quando não existem mais aberturas, remove a entrada global.
+        if global_.contador == 0:
+            del self.tabela_global[fcb.id]
+
+            # Arquivos removidos só liberam seus blocos após o último close.
+            if fcb.links == 0:
+                self._liberar_arquivo(fcb)
 
     def unlink(self, processo, caminho):
         raise NotImplementedError("TODO (núcleo N3): unlink")
