@@ -80,8 +80,34 @@ class SCAN(Escalonador):
     nome = "SCAN"
 
     def escolher(self, fila, cabeca, direcao, agora, max_cilindro):
-        raise NotImplementedError("TODO (núcleo N2): implementar o SCAN")
+        # Identifica as requisições na direção atual.
+        candidatos = [
+            i for i in range(len(fila))
+            if (fila[i].cilindro - cabeca) * direcao >= 0
+        ]
 
+        # Atende a requisição mais próxima na direção atual.
+        if candidatos:
+            indice = min(
+                candidatos,
+                key=lambda i: abs(fila[i].cilindro - cabeca)
+            )
+
+            return indice, direcao, []
+
+        # Sem requisições à frente, vai até a borda do disco.
+        borda = max_cilindro if direcao == +1 else 0
+
+        # Inverte a direção do movimento.
+        direcao = -direcao
+
+        # Seleciona a requisição mais próxima da borda.
+        indice = min(
+            range(len(fila)),
+            key=lambda i: abs(fila[i].cilindro - borda)
+        )
+
+        return indice, direcao, [borda]
 
 # ------------------------------------------------------------------ módulo M2
 class CSCAN(Escalonador):
