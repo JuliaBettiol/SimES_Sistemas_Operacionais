@@ -247,16 +247,83 @@ class SistemaArquivos:
         self._gravar_diretorio(pai)
 
     def open(self, processo, caminho, modo, handle):
-        raise NotImplementedError("TODO (núcleo N3): open")
+        # Verifica se o modo de abertura é válido.
+        if modo not in ("r", "w", "rw", "a"):
+            raise ErroSA("EINVAL", "modo de abertura inválido")
+
+        # Localiza o arquivo, contabilizando as leituras dos diretórios.
+        fcb = self.resolver(caminho)
+
+        if fcb.tipo == "diretorio":
+            raise ErroSA("EISDIR", caminho)
+
+        if fcb.tipo != "arquivo":
+            raise ErroSA("EINVAL", "não é um arquivo regular")
+
+        # Gancho para o módulo de proteção M5.
+        self._verificar_permissao(processo, fcb, modo)
+
+        # Cada processo possui sua própria tabela de arquivos abertos.
+        tabela = self.tabelas_processo.setdefault(processo, {})
+
+        if handle in tabela:
+            raise ErroSA("EINVAL", "handle já utilizado")
+
+        # A tabela global mantém uma entrada por arquivo.
+        if fcb.id not in self.tabela_global:
+            self.tabela_global[fcb.id] = EntradaGlobal(fcb.id)
+
+        entrada_global = self.tabela_global[fcb.id]
+        entrada_global.contador += 1
+
+        # Cada abertura possui posição e modo independentes.
+        posicao = fcb.tamanho if modo == "a" else 0
+        tabela[handle] = EntradaProcesso(fcb.id, modo, posicao)
 
     def read(self, processo, handle, n):
-        raise NotImplementedError("TODO (núcleo N3): read")
+        # Obtém a abertura correspondente ao processo.
+        entrada = self._entrada(processo, handle)
+
+        if n < 0:
+            raise ErroSA("EINVAL", "quantidade negativa")
+
+        # A leitura só é permitida nos modos r e rw.
+        if "r" not in entrada.modo:
+            raise ErroSA("EBADF", "arquivo não aberto para leitura")
+
+        fcb = self.fcbs[entrada.fcb_id]
+
+        # Verifica possíveis travas (módulo M5).
+        self._verificar_trava(processo, fcb)
+
+        # A leitura não pode ultrapassar o fim do arquivo.
+        inicio = entrada.posicao
+        fim = min(inicio + n, fcb.tamanho)
+
+        if fim <= inicio:
+            return 0
+
+        # Identifica e lê os blocos necessários.
+        blocos = self._blocos_do_intervalo(fcb, inicio, fim)
+        self._ler(blocos)
+
+        # Atualiza a posição somente desta abertura.
+        entrada.posicao = fim
+
+        return fim - inicio
 
     def write(self, processo, handle, n):
         raise NotImplementedError("TODO (núcleo N3): write")
 
     def seek(self, processo, handle, posicao):
-        raise NotImplementedError("TODO (núcleo N3): seek")
+        # Não permite posições negativas.
+        if posicao < 0:
+            raise ErroSA("EINVAL", "posição negativa")
+
+        entrada = self._entrada(processo, handle)
+
+        # Atualiza o ponteiro sem realizar acessos ao disco.
+        entrada.posicao = posicao
 
     def close(self, processo, handle):
         raise NotImplementedError("TODO (núcleo N3): close")
